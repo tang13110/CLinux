@@ -8,22 +8,32 @@
 
 int estPresent(const char* nom)
 {
-  int FICHIER;
-  UTILISATEUR User;
+  int fch, lenghtFile;
+  UTILISATEUR user;
 
-  FICHIER = open(FICHIER_UTILISATEURS, O_RDONLY);
-  if(FICHIER == -1){
-    perror("erreur fichier");
-    return FICHIER;
+  fch = open(FICHIER_UTILISATEURS, O_RDONLY);
+  if(fch == -1){
+    return fch;
   }
-  read(FICHIER, &User, sizeof(UTILISATEUR)); //lseek pour le déplacement
 
-  printf("Affichage de la lecture");
-  printf("%d\n", User.hash);
-  puts(User.nom);
+  if((lenghtFile = lseek(fch, 0, SEEK_END)) == -1){
+    close(fch);
+    return lenghtFile;
+  }
+  lseek(fch, 0, SEEK_SET);
 
-  close(FICHIER);
-  return 1;
+  int i, verif, index = -1;
+  for(i = 1; i <= lenghtFile/24; i++){
+    verif = read(fch, &user, sizeof(UTILISATEUR));
+    if(verif == -1){i = lenghtFile + 1;}
+    if(strcmp(user.nom, nom) == 0){
+      index = i;
+      i = lenghtFile + 1;
+    }  
+  }
+  close(fch);
+  if(index == -1){return 0;}
+  return index;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////
@@ -41,30 +51,64 @@ int hash(const char* motDePasse)
 void ajouteUtilisateur(const char* nom, const char* motDePasse)
 {
   int FICHIER;
-  UTILISATEUR NewUser;
-  strcpy(NewUser.nom, nom);
-  NewUser.hash = hash(motDePasse);
-  printf("Verification copie dans NewUser: \n");
-  puts(NewUser.nom);
-  printf("%d\n", NewUser.hash);
-  FICHIER = open(FICHIER_UTILISATEURS, O_WRONLY | O_APPEND, 0750);
+  UTILISATEUR newUser;
+
+  strcpy(newUser.nom, nom);
+  newUser.hash = hash(motDePasse);
+
+  FICHIER = open(FICHIER_UTILISATEURS, O_WRONLY | O_APPEND);
   if(FICHIER == -1){
-    FICHIER = open(FICHIER_UTILISATEURS, O_CREAT | O_WRONLY, 0750);
+    FICHIER = open(FICHIER_UTILISATEURS, O_CREAT | O_WRONLY, 0766);
   }
-  write(FICHIER, &NewUser, sizeof(UTILISATEUR));
-  printf("Retour close : %d \n",close(FICHIER));
+  write(FICHIER, &newUser, sizeof(UTILISATEUR));
+  close(FICHIER);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////
 int verifieMotDePasse(int pos, const char* motDePasse)
 {
-  // TO DO
-  return 0;
+  int fch, numHash, verif;
+  UTILISATEUR user;
+
+  fch = open(FICHIER_UTILISATEURS, O_RDONLY);
+  if(fch == -1){
+    return fch;
+  }
+  numHash = hash(motDePasse);
+  lseek(fch, pos*sizeof(UTILISATEUR),SEEK_SET);
+  verif = read(fch, &user, sizeof(UTILISATEUR));
+  if(verif == -1){return verif;}
+  printf("%d %d", numHash, user.hash);
+  if(user.hash == numHash){
+    return 1;
+  }
+  else{
+    return 0;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////
 int listeUtilisateurs(UTILISATEUR *vecteur) // le vecteur doit etre suffisamment grand
 {
-  // TO DO
-  return 0;
+  int fch, lenghtFile;
+  UTILISATEUR user;
+
+  fch = open(FICHIER_UTILISATEURS, O_RDONLY);
+  if(fch == -1){
+    return fch;
+  }
+
+  if((lenghtFile = lseek(fch, 0, SEEK_END)) == -1){
+    close(fch);
+    return lenghtFile;
+  }
+  lseek(fch, 0, SEEK_SET);
+
+  int i, verif;
+  for(i = 0; i < lenghtFile/24; i++){
+    verif = read(fch, &vecteur[i], sizeof(UTILISATEUR));
+    if(verif == -1){i = lenghtFile + 1;}
+  }
+  close(fch);
+  return lenghtFile/sizeof(UTILISATEUR);
 }
